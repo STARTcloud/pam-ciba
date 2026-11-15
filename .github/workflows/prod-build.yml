@@ -1,0 +1,206 @@
+name: Production Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: true
+        type: string
+      tag_name:
+        description: 'GitHub release tag'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: true
+        type: string
+      tag_name:
+        description: 'GitHub release tag'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build
+        run: |
+          mkdir -p bin dist
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X github.com/STARTcloud/pam-ciba/internal/version.Version=${{ inputs.version }}" \
+            -o bin/pam-ciba .
+
+      - name: Build Debian package
+        run: |
+          VERSION="${{ inputs.version }}"
+          ARCH=amd64
+          STAGE="dist/pam-ciba_${VERSION}_${ARCH}"
+          mkdir -p "$STAGE"/usr/bin \
+                   "$STAGE"/etc/pam-ciba \
+                   "$STAGE"/usr/share/man/man8 \
+                   "$STAGE"/usr/share/man/man5 \
+                   "$STAGE"/usr/share/pam-ciba/config \
+                   "$STAGE"/DEBIAN
+          cp bin/pam-ciba "$STAGE/usr/bin/"
+          cp internal/config/seed/*.config.yaml "$STAGE/usr/share/pam-ciba/config/"
+          gzip -9 -c packaging/DEBIAN/man/pam-ciba.8 > "$STAGE/usr/share/man/man8/pam-ciba.8.gz"
+          gzip -9 -c packaging/DEBIAN/man/pam-ciba.yaml.5 > "$STAGE/usr/share/man/man5/pam-ciba.yaml.5.gz"
+          cp packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "$STAGE/DEBIAN/"
+
+          cat > "$STAGE/DEBIAN/control" << EOF
+          Package: pam-ciba
+          Version: ${VERSION}
+          Section: admin
+          Priority: optional
+          Architecture: ${ARCH}
+          Depends: libpam-modules, ca-certificates
+          Maintainer: Makr91 <makr91@users.noreply.github.com>
+          Description: PAM CIBA - push-approved PAM sign-in through an OpenID Provider
+           Single-binary program run by pam_exec in a PAM auth stack. It asks
+           an OpenID Provider to have the mapped end-user approve the sign-in
+           on their own device (OpenID Connect CIBA Core 1.0, poll mode),
+           waits for the answer and verifies the ID token. The terminal is
+           asked nothing.
+          Homepage: https://github.com/STARTcloud/pam-ciba
+          EOF
+
+          find "$STAGE" -type d -exec chmod 755 {} \;
+          find "$STAGE" -type f -exec chmod 644 {} \;
+          chmod 755 "$STAGE/usr/bin/pam-ciba" "$STAGE/DEBIAN"/postinst "$STAGE/DEBIAN"/prerm "$STAGE/DEBIAN"/postrm
+          chmod 700 "$STAGE/etc/pam-ciba"
+
+          dpkg-deb --build --root-owner-group "$STAGE" "dist/pam-ciba_${VERSION}_${ARCH}.deb"
+
+      - name: Upload release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.tag_name }}" \
+            "dist/pam-ciba_${{ inputs.version }}_amd64.deb" \
+            --clobber
+
+      - name: Generate and upload SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          sha256sum pam-ciba_*.deb > SHA256SUMS.txt
+          gh release upload "${{ inputs.tag_name }}" SHA256SUMS.txt --clobber
+
+      - name: Generate and upload update-info.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          DL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          NOTES="$(gh release view "${TAG}" --json body --jq .body | jq -Rs .)"
+          cat > update-info.json << EOF
+          {
+            "version": "${{ inputs.version }}",
+            "releaseUrl": "https://github.com/${{ github.repository }}/releases/tag/${TAG}",
+            "releaseDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "changelog": "https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md",
+            "releaseNotes": ${NOTES},
+            "linuxUrl": "${DL}/pam-ciba_${{ inputs.version }}_amd64.deb",
+            "checksumsUrl": "${DL}/SHA256SUMS.txt"
+          }
+          EOF
+          gh release upload "${TAG}" update-info.json --clobber
+
+  publish-debian:
+    name: Publish Debian repository
+    needs: build-linux
+    runs-on: self-hosted
+    steps:
+      - name: Download Debian package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -f pam-ciba_*.deb
+          gh release download "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --pattern 'pam-ciba_*.deb'
+
+      - name: Upload Debian package to repository server
+        run: |
+          rsync -av pam-ciba_*.deb startcloud@debian.startcloud.com:/tmp/
+
+      - name: Add package to repository pool
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            mkdir -p /local/public/debian/pool/main/d/pam-ciba
+            cp /tmp/pam-ciba_*.deb /local/public/debian/pool/main/d/pam-ciba/
+          "
+
+      - name: Create multi-suite directory structure
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            cd /local/public/debian
+            mkdir -p dists/bookworm/main/binary-amd64
+            mkdir -p dists/trixie/main/binary-amd64
+          "
+
+      - name: Update repository Packages files for all suites
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            cd /local/public/debian
+            for suite in bookworm trixie; do
+              dpkg-scanpackages --arch amd64 pool/ > dists/\$suite/main/binary-amd64/Packages
+              gzip -c dists/\$suite/main/binary-amd64/Packages > dists/\$suite/main/binary-amd64/Packages.gz
+            done
+          "
+
+      - name: Generate Release files for all suites
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            cd /local/public/debian
+            for suite in bookworm trixie; do
+              cd dists/\$suite
+              /local/generate-release.sh \$suite > Release
+              cd ../..
+            done
+          "
+
+      - name: Create stable distribution with proper Release file
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            cd /local/public/debian/dists
+            rm -rf stable 2>/dev/null || true
+            cp -r trixie stable
+            cd stable
+            /local/generate-release.sh stable > Release
+          "
+
+      - name: Sign repository for all suites including stable
+        run: |
+          ssh startcloud@debian.startcloud.com "
+            cd /local/public/debian
+            for suite in bookworm trixie stable; do
+              cd dists/\$suite
+              export GNUPGHOME=\$(mktemp -d /local/pgp/pgpkeys-XXXXXX)
+              cat /local/pgp/pgp-key.private | gpg --import
+              cat Release | gpg --default-key startcloud -abs > Release.gpg
+              cat Release | gpg --default-key startcloud -abs --clearsign > InRelease
+              rm -rf \$GNUPGHOME
+              cd ../..
+            done
+          "
+
+      - name: Cleanup temporary files
+        run: |
+          ssh startcloud@debian.startcloud.com "rm -f /tmp/pam-ciba_*.deb"
+          rm -f pam-ciba_*.deb

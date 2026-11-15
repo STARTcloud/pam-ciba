@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "remove" ]; then
+    if grep -rqs 'pam-ciba' /etc/pam.d; then
+        echo "PAM CIBA is still named in /etc/pam.d; remove those lines or sign-ins through them fail" >&2
+    fi
+fi
+
+#DEBHELPER#

@@ -1,0 +1,58 @@
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+set name=pkg.fmri value=system/security/pam-ciba@@VERSION@
+set name=pkg.summary value="PAM CIBA - push-approved PAM sign-in through an OpenID Provider"
+set name=pkg.description value="Single-binary program and PAM service module that sign a local account in through an OpenID Provider's Client-Initiated Backchannel Authentication flow in poll mode; the end-user approves on their own device and the terminal is asked nothing."
+set name=info.classification value="org.opensolaris.category.2008:System/Security"
+set name=info.upstream value="Makr91"
+set name=info.upstream-url value="https://github.com/STARTcloud/pam-ciba"
+
+license opt/pam-ciba/LICENSE.md license="GPL-3.0" must-accept=false
+
+<transform dir path=^opt$ -> drop>
+<transform dir path=^etc$ -> drop>
+<transform dir path=^usr$ -> drop>
+<transform dir path=usr/lib$ -> drop>
+<transform dir path=usr/lib/security$ -> drop>
+<transform dir path=usr/lib/security/amd64$ -> drop>
+<transform dir path=opt/ooce$ -> drop>
+<transform dir path=opt/ooce/share$ -> drop>
+<transform dir path=opt/ooce/share/man$ -> drop>
+<transform dir path=opt/ooce/share/man/man8$ -> drop>
+<transform dir path=opt/ooce/share/man/man5$ -> drop>
+
+<transform dir path=opt/pam-ciba$ -> set owner root>
+<transform dir path=opt/pam-ciba$ -> set group bin>
+<transform dir path=opt/pam-ciba$ -> set mode 0755>
+
+<transform file path=opt/pam-ciba/.* -> set owner root>
+<transform file path=opt/pam-ciba/.* -> set group bin>
+<transform file path=opt/pam-ciba/.* -> set mode 0644>
+
+<transform file path=opt/pam-ciba/pam-ciba -> set mode 0755>
+
+<transform file path=usr/lib/security/amd64/pam_ciba.so.1 -> set owner root>
+<transform file path=usr/lib/security/amd64/pam_ciba.so.1 -> set group bin>
+<transform file path=usr/lib/security/amd64/pam_ciba.so.1 -> set mode 0755>
+
+<transform dir path=etc/pam-ciba$ -> set owner root>
+<transform dir path=etc/pam-ciba$ -> set group root>
+<transform dir path=etc/pam-ciba$ -> set mode 0700>
+
+<transform file path=etc/pam-ciba/.*\.config\.yaml -> set owner root>
+<transform file path=etc/pam-ciba/.*\.config\.yaml -> set group root>
+<transform file path=etc/pam-ciba/.*\.config\.yaml -> set mode 0600>
+<transform file path=etc/pam-ciba/.*\.config\.yaml -> set preserve true>
+
+<transform file path=opt/ooce/share/man/.* -> set owner root>
+<transform file path=opt/ooce/share/man/.* -> set group bin>
+<transform file path=opt/ooce/share/man/.* -> set mode 0444>

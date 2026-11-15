@@ -1,0 +1,141 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Application
+schemaVersion: 1
+sections:
+  provider:
+    title: Provider
+    order: 1
+  approval:
+    title: Approval
+    order: 2
+  users:
+    title: Users
+    order: 3
+  logging:
+    title: Logging
+    order: 4
+properties:
+  schemaVersion:
+    type: integer
+    readOnly: true
+    default: 1
+    title: Schema version
+  provider:
+    type: object
+    section: provider
+    subsection: provider
+    title: Provider
+    order: 1
+    properties:
+      issuer:
+        type: string
+        default: ''
+        title: Issuer
+        description: The OpenID Provider's issuer identifier, an https URL; its metadata is read from <issuer>/.well-known/openid-configuration
+        order: 1
+      client_id:
+        type: string
+        default: ''
+        title: Client ID
+        description: The public client registered at the provider with the CIBA grant type and poll delivery
+        order: 2
+      scope:
+        type: string
+        default: openid profile
+        title: Scope
+        description: Space-separated scope of the authentication request; it contains openid
+        order: 3
+      request_timeout_seconds:
+        type: integer
+        minimum: 1
+        maximum: 120
+        default: 10
+        title: Request timeout (seconds)
+        description: Bound on each HTTP request to the provider
+        order: 4
+  approval:
+    type: object
+    section: approval
+    subsection: approval
+    title: Approval
+    order: 1
+    properties:
+      binding_message:
+        type: string
+        maxLength: 255
+        default: '{service} sign-in to {host} as {user} from {rhost}'
+        title: Binding message
+        description: Shown to the end-user beside the approval; {user}, {host}, {rhost} and {service} are replaced with the local account, this host's name, the remote host and the PAM service
+        order: 1
+      requested_expiry_seconds:
+        type: integer
+        minimum: 0
+        maximum: 3600
+        default: 0
+        title: Requested expiry (seconds)
+        description: The request lifetime asked of the provider; 0 takes the provider's default
+        order: 2
+  users:
+    type: object
+    section: users
+    subsection: users
+    title: Users
+    description: Local account name to the provider account it signs in as, the login_hint of the request; an account without an entry is refused
+    order: 1
+    propertyNames:
+      pattern: '^[a-z_][a-z0-9_.-]*$'
+    additionalProperties:
+      type: string
+  logging:
+    type: object
+    section: logging
+    subsection: logging
+    title: Logging
+    order: 1
+    properties:
+      level:
+        type: string
+        enum: [error, warn, info, debug]
+        default: info
+        title: Log level
+        order: 1
+      console:
+        type: boolean
+        default: false
+        title: Console output
+        description: Also log to standard error; PAM discards it during a sign-in
+        order: 2
+      file:
+        type: string
+        default: ''
+        title: Log file
+        description: Empty = logs/pam-ciba.log beside the configuration file, written here on first run
+        order: 3
+      max_size_mb:
+        type: integer
+        minimum: 1
+        default: 20
+        title: Maximum size (MB)
+        description: Log file size before rotation
+        order: 4
+      max_backups:
+        type: integer
+        minimum: 0
+        default: 5
+        title: Rotated files kept
+        order: 5
+      compression:
+        type: boolean
+        default: true
+        title: Compress rotated files
+        order: 6
+      categories:
+        type: object
+        subsection: loggingCategories
+        title: Category levels
+        description: Per-category levels overriding the global level; categories are app, auth
+        propertyNames:
+          pattern: '^[a-z_]+$'
+        additionalProperties:
+          type: string
+          enum: [error, warn, info, debug]

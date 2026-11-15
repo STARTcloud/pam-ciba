@@ -1,0 +1,78 @@
+.Dd $Mdocdate$
+.Dt PAM-CIBA.YAML 5
+.Os
+.Sh NAME
+.Nm app.config.yaml
+.Nd configuration of pam-ciba
+.Sh SYNOPSIS
+.Pa /etc/pam-ciba/app.config.yaml
+.Sh DESCRIPTION
+The file is YAML. Every key takes its default when absent.
+.Sh PROVIDER
+.Bl -tag -width "request_timeout_seconds"
+.It Cm issuer
+The OpenID Provider's issuer identifier, an https URL. Its metadata is read
+from
+.Pa <issuer>/.well-known/openid-configuration .
+.It Cm client_id
+The public client registered at the provider with the CIBA grant type and
+poll delivery.
+.It Cm scope
+Space-separated scope of the authentication request. It contains
+.Li openid .
+Default
+.Li openid profile .
+.It Cm request_timeout_seconds
+Bound on each HTTP request to the provider. Default 10.
+.El
+.Sh APPROVAL
+.Bl -tag -width "requested_expiry_seconds"
+.It Cm binding_message
+Shown to the end-user beside the approval, at most 255 characters.
+.Li {user} ,
+.Li {host} ,
+.Li {rhost}
+and
+.Li {service}
+are replaced with the local account, this host's name, the remote host and
+the PAM service.
+.It Cm requested_expiry_seconds
+The request lifetime asked of the provider. 0 takes the provider's default.
+.El
+.Sh USERS
+A map of local account name to the provider account it signs in as, sent
+as the request's
+.Li login_hint .
+An account without an entry is refused.
+.Sh LOGGING
+.Bl -tag -width "max_backups"
+.It Cm level
+One of error, warn, info, debug. Default info.
+.It Cm console
+Also log to standard error. Default false.
+.It Cm file
+The log file. Empty selects
+.Pa logs/pam-ciba.log
+beside the configuration file.
+.It Cm max_size_mb
+Log file size before rotation. Default 20.
+.It Cm max_backups
+Rotated files kept. Default 5.
+.It Cm compression
+Compress rotated files. Default true.
+.It Cm categories
+Per-category levels overriding
+.Cm level ;
+categories are app and auth.
+.El
+.Sh EXAMPLES
+.Bd -literal
+schemaVersion: 1
+provider:
+  issuer: https://auth.example.org
+  client_id: host-ssh
+users:
+  alice: alice@example.org
+.Ed
+.Sh SEE ALSO
+.Xr pam-ciba 8

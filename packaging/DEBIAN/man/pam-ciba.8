@@ -1,0 +1,99 @@
+.Dd $Mdocdate$
+.Dt PAM-CIBA 8
+.Os
+.Sh NAME
+.Nm pam-ciba
+.Nd push-approved PAM sign-in through an OpenID Provider
+.Sh SYNOPSIS
+.Nm
+.Op Fl -config Ar dir
+.Cm authenticate
+.Nm
+.Op Fl -config Ar dir
+.Cm check Ar user
+.Nm
+.Fl -version
+.Sh DESCRIPTION
+The
+.Nm
+utility signs a local account in through an OpenID Provider's
+Client-Initiated Backchannel Authentication flow in poll mode. It is run by
+.Xr pam_exec 8
+in a PAM auth stack. It asks the provider to have the end-user the local
+account maps to approve the sign-in on their own device, waits for the
+answer, and exits 0 once the provider issues an ID token that verifies and
+names that end-user. It asks the terminal nothing.
+.Sh OPTIONS
+.Bl -tag -width ".Fl -config Ar dir"
+.It Fl -config Ar dir
+The configuration directory. The default is
+.Ev CONFIG_DIR ,
+else
+.Pa /etc/pam-ciba .
+.It Fl -version
+Print the version and exit.
+.El
+.Sh COMMANDS
+.Bl -tag -width "authenticate"
+.It Cm authenticate
+Sign in the account named by
+.Ev PAM_USER .
+.Ev PAM_RHOST
+and
+.Ev PAM_SERVICE
+fill the binding message. Run by
+.Xr pam_exec 8 .
+.It Cm check Ar user
+Sign in
+.Ar user
+and print each step.
+.El
+.Sh PAM CONFIGURATION
+Two lines in the service's auth stack:
+.Bd -literal
+auth [success=ok ignore=ignore default=die] pam_exec.so quiet /usr/bin/pam-ciba authenticate
+auth [success=done default=die] pam_permit.so
+.Ed
+.Pp
+The first line runs the sign-in and ends the stack on any failure. The
+second line ends the stack on success and answers the credential step,
+which
+.Xr pam_exec 8
+leaves unanswered.
+.Sh ENVIRONMENT
+.Bl -tag -width "PAM_SERVICE"
+.It Ev CONFIG_DIR
+The configuration directory when
+.Fl -config
+is not given.
+.It Ev PAM_USER
+The local account to sign in.
+.It Ev PAM_RHOST
+The remote host of the sign-in.
+.It Ev PAM_SERVICE
+The PAM service of the sign-in.
+.It Ev PAM_TYPE
+The PAM stack;
+.Cm authenticate
+runs only for
+.Li auth .
+.El
+.Sh FILES
+.Bl -tag -width "/etc/pam-ciba/app.config.yaml"
+.It Pa /etc/pam-ciba/app.config.yaml
+The configuration; see
+.Xr pam-ciba.yaml 5 .
+.It Pa /etc/pam-ciba/logs/pam-ciba.log
+The log.
+.El
+.Sh EXIT STATUS
+.Ex -std
+A sign-in the end-user denies, leaves unanswered until the request expires,
+or that the provider refuses exits non-zero.
+.Sh SEE ALSO
+.Xr pam-ciba.yaml 5 ,
+.Xr pam_exec 8 ,
+.Xr sshd_config 5
+.Sh STANDARDS
+OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0,
+poll mode. OpenID Connect Core 1.0, ID Token Validation.
