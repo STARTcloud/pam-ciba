@@ -75,6 +75,12 @@ properties:
         title: Requested expiry (seconds)
         description: The request lifetime asked of the provider; 0 takes the provider's default
         order: 2
+      authorization_details_type:
+        type: string
+        default: ''
+        title: Authorization details type
+        description: The RFC 9396 authorization details type the provider has registered for this client; when set, the request carries one authorization detail of that type with the fields user, host, remote_host and service; empty sends none
+        order: 3
   users:
     type: object
     section: users

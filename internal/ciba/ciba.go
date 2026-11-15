@@ -69,14 +69,17 @@ type Tokens struct {
 	IDToken     string `json:"id_token"`
 }
 
-// Authorize sends the authentication request of CIBA Core 7.1 for the end-user named by loginHint and answers the provider's acknowledgement. bindingMessage and requestedExpiry are left out when empty and zero.
-func (c *Client) Authorize(ctx context.Context, scope, loginHint, bindingMessage string, requestedExpiry int) (*Request, error) {
+// Authorize sends the authentication request of CIBA Core 7.1 for the end-user named by loginHint and answers the provider's acknowledgement. bindingMessage, authorizationDetails (the JSON array of RFC 9396) and requestedExpiry are left out when empty and zero.
+func (c *Client) Authorize(ctx context.Context, scope, loginHint, bindingMessage, authorizationDetails string, requestedExpiry int) (*Request, error) {
 	form := url.Values{}
 	form.Set("client_id", c.ClientID)
 	form.Set("scope", scope)
 	form.Set("login_hint", loginHint)
 	if bindingMessage != "" {
 		form.Set("binding_message", bindingMessage)
+	}
+	if authorizationDetails != "" {
+		form.Set("authorization_details", authorizationDetails)
 	}
 	if requestedExpiry > 0 {
 		form.Set("requested_expiry", strconv.Itoa(requestedExpiry))

@@ -24,6 +24,11 @@ type ApprovalConfig struct {
 	// RequestedExpirySeconds asks the provider for a request lifetime; 0 takes
 	// the provider's default.
 	RequestedExpirySeconds int `yaml:"requested_expiry_seconds" json:"requested_expiry_seconds"`
+	// AuthorizationDetailsType is the RFC 9396 authorization details type the
+	// provider has registered for this client; when set, the request carries
+	// one authorization detail of that type with the fields user, host,
+	// remote_host and service. Empty sends none.
+	AuthorizationDetailsType string `yaml:"authorization_details_type" json:"authorization_details_type"`
 }
 
 // LoggingConfig controls slog output.

@@ -38,6 +38,16 @@ are replaced with the local account, this host's name, the remote host and
 the PAM service.
 .It Cm requested_expiry_seconds
 The request lifetime asked of the provider. 0 takes the provider's default.
+.It Cm authorization_details_type
+The RFC 9396 authorization details type the provider has registered for
+this client. When set, the request carries one authorization detail of that
+type with the fields
+.Li user ,
+.Li host ,
+.Li remote_host
+and
+.Li service .
+Empty sends none.
 .El
 .Sh USERS
 A map of local account name to the provider account it signs in as, sent

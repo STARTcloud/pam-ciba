@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -129,9 +130,13 @@ func authenticate(ctx context.Context, cfg *config.Config, login signIn, progres
 		return err
 	}
 
+	details, err := authorizationDetails(cfg.Approval.AuthorizationDetailsType, login)
+	if err != nil {
+		return err
+	}
 	client := &ciba.Client{HTTP: httpClient, Metadata: metadata, ClientID: cfg.Provider.ClientID}
 	request, err := client.Authorize(ctx, cfg.Provider.Scope, account,
-		bindingMessage(cfg.Approval.BindingMessage, login), cfg.Approval.RequestedExpirySeconds)
+		bindingMessage(cfg.Approval.BindingMessage, login), details, cfg.Approval.RequestedExpirySeconds)
 	if err != nil {
 		return err
 	}
@@ -157,20 +162,45 @@ func authenticate(ctx context.Context, cfg *config.Config, login signIn, progres
 	return nil
 }
 
-// bindingMessage fills the template's placeholders and answers at most 255 printable characters, the binding_message a provider shows the end-user.
-func bindingMessage(template string, login signIn) string {
+// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host, remote_host and service, or the empty string when detailType is empty.
+func authorizationDetails(detailType string, login signIn) (string, error) {
+	if detailType == "" {
+		return "", nil
+	}
+	raw, err := json.Marshal([]map[string]string{{
+		"type":        detailType,
+		"user":        login.localUser,
+		"host":        hostName(),
+		"remote_host": remoteName(login),
+		"service":     login.service,
+	}})
+	if err != nil {
+		return "", fmt.Errorf("encode authorization details: %w", err)
+	}
+	return string(raw), nil
+}
+
+func hostName() string {
 	host, err := os.Hostname()
 	if err != nil {
-		host = "this host"
+		return "this host"
 	}
-	remote := login.remote
-	if remote == "" {
-		remote = "the console"
+	return host
+}
+
+func remoteName(login signIn) string {
+	if login.remote == "" {
+		return "the console"
 	}
+	return login.remote
+}
+
+// bindingMessage fills the template's placeholders and answers at most 255 printable characters, the binding_message a provider shows the end-user.
+func bindingMessage(template string, login signIn) string {
 	message := strings.NewReplacer(
 		"{user}", login.localUser,
-		"{host}", host,
-		"{rhost}", remote,
+		"{host}", hostName(),
+		"{rhost}", remoteName(login),
 		"{service}", login.service,
 	).Replace(template)
 	printable := strings.Map(func(r rune) rune {

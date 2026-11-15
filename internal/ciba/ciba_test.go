@@ -45,11 +45,12 @@ func TestAuthorizeSendsTheRequestAndReadsTheAcknowledgement(t *testing.T) {
 			t.Fatal(err)
 		}
 		for name, want := range map[string]string{
-			"client_id":        "host-ssh",
-			"scope":            "openid profile",
-			"login_hint":       "user@example.org",
-			"binding_message":  "sshd sign-in",
-			"requested_expiry": "120",
+			"client_id":             "host-ssh",
+			"scope":                 "openid profile",
+			"login_hint":            "user@example.org",
+			"binding_message":       "sshd sign-in",
+			"authorization_details": `[{"type":"pam_sign_in"}]`,
+			"requested_expiry":      "120",
 		} {
 			if got := r.PostForm.Get(name); got != want {
 				t.Errorf("%s = %q, want %q", name, got, want)
@@ -58,7 +59,7 @@ func TestAuthorizeSendsTheRequestAndReadsTheAcknowledgement(t *testing.T) {
 		answer(w, http.StatusOK, map[string]any{"auth_req_id": "abc", "expires_in": 120, "interval": 2})
 	}, nil)
 
-	request, err := client.Authorize(context.Background(), "openid profile", "user@example.org", "sshd sign-in", 120)
+	request, err := client.Authorize(context.Background(), "openid profile", "user@example.org", "sshd sign-in", `[{"type":"pam_sign_in"}]`, 120)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +72,7 @@ func TestAuthorizeDefaultsTheIntervalToFiveSeconds(t *testing.T) {
 	client := provider(t, func(w http.ResponseWriter, _ *http.Request) {
 		answer(w, http.StatusOK, map[string]any{"auth_req_id": "abc", "expires_in": 60})
 	}, nil)
-	request, err := client.Authorize(context.Background(), "openid", "user@example.org", "", 0)
+	request, err := client.Authorize(context.Background(), "openid", "user@example.org", "", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ func TestAuthorizeAnswersTheProviderError(t *testing.T) {
 	client := provider(t, func(w http.ResponseWriter, _ *http.Request) {
 		answer(w, http.StatusBadRequest, map[string]any{"error": "unknown_user_id", "error_description": "no such end-user"})
 	}, nil)
-	_, err := client.Authorize(context.Background(), "openid", "nobody@example.org", "", 0)
+	_, err := client.Authorize(context.Background(), "openid", "nobody@example.org", "", "", 0)
 	var providerError *Error
 	if !errors.As(err, &providerError) || providerError.Code != "unknown_user_id" {
 		t.Fatalf("error = %v, want unknown_user_id", err)
