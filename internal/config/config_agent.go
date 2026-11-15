@@ -27,7 +27,8 @@ type ApprovalConfig struct {
 	// AuthorizationDetailsType is the RFC 9396 authorization details type the
 	// provider has registered for this client; when set, the request carries
 	// one authorization detail of that type with the fields user, host,
-	// remote_host and service. Empty sends none.
+	// remote_host, remote_user, tty, service and at, a field with no value
+	// left out. Empty sends none.
 	AuthorizationDetailsType string `yaml:"authorization_details_type" json:"authorization_details_type"`
 }
 

@@ -2,8 +2,9 @@
  * pam_ciba is the PAM service module that runs pam-ciba on systems whose PAM
  * has no pam_exec. pam_sm_authenticate runs the program named by the first
  * module option (default /opt/pam-ciba/pam-ciba) with the argument
- * "authenticate" and the environment PAM_USER, PAM_RHOST, PAM_SERVICE and
- * PAM_TYPE, and returns PAM_SUCCESS when it exits 0, PAM_AUTH_ERR otherwise.
+ * "authenticate" and the environment PAM_USER, PAM_RHOST, PAM_RUSER, PAM_TTY,
+ * PAM_SERVICE and PAM_TYPE, and returns PAM_SUCCESS when it exits 0,
+ * PAM_AUTH_ERR otherwise.
  * Further module options are passed to the program before "authenticate".
  */
 
@@ -39,7 +40,7 @@ item(pam_handle_t *pamh, int type)
 
 static void
 run(const char *program, int argc, const char **argv, const char *user,
-    const char *rhost, const char *service)
+    const char *rhost, const char *ruser, const char *tty, const char *service)
 {
 	char *args[PAM_CIBA_MAX_ARGS + 3];
 	static char *empty[] = { NULL };
@@ -56,6 +57,8 @@ run(const char *program, int argc, const char **argv, const char *user,
 	environ = empty;
 	if (setenv("PAM_USER", user, 1) != 0 ||
 	    setenv("PAM_RHOST", rhost, 1) != 0 ||
+	    setenv("PAM_RUSER", ruser, 1) != 0 ||
+	    setenv("PAM_TTY", tty, 1) != 0 ||
 	    setenv("PAM_SERVICE", service, 1) != 0 ||
 	    setenv("PAM_TYPE", "auth", 1) != 0)
 		_exit(126);
@@ -78,6 +81,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	const char *program = PAM_CIBA_PROGRAM;
 	const char *user;
 	const char *rhost;
+	const char *ruser;
+	const char *tty;
 	const char *service;
 	struct sigaction dfl;
 	struct sigaction saved;
@@ -96,6 +101,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 		return (PAM_AUTH_ERR);
 	}
 	rhost = item(pamh, PAM_RHOST);
+	ruser = item(pamh, PAM_RUSER);
+	tty = item(pamh, PAM_TTY);
 	service = item(pamh, PAM_SERVICE);
 
 	(void) memset(&dfl, 0, sizeof (dfl));
@@ -111,7 +118,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 		return (PAM_SYSTEM_ERR);
 	}
 	if (child == 0)
-		run(program, argc, argv, user, rhost, service);
+		run(program, argc, argv, user, rhost, ruser, tty, service);
 
 	do {
 		reaped = waitpid(child, &status, 0);

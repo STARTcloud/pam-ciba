@@ -64,9 +64,11 @@ func run() error {
 			return fmt.Errorf("pam-ciba authenticate runs in the auth stack, not %s", pamType)
 		}
 		login = signIn{
-			localUser: os.Getenv("PAM_USER"),
-			remote:    os.Getenv("PAM_RHOST"),
-			service:   os.Getenv("PAM_SERVICE"),
+			localUser:  os.Getenv("PAM_USER"),
+			remote:     os.Getenv("PAM_RHOST"),
+			remoteUser: os.Getenv("PAM_RUSER"),
+			tty:        os.Getenv("PAM_TTY"),
+			service:    os.Getenv("PAM_SERVICE"),
 		}
 	case flag.NArg() == 2 && flag.Arg(0) == "check":
 		login = signIn{localUser: flag.Arg(1), service: "check"}
@@ -96,7 +98,7 @@ func run() error {
 	defer stop()
 
 	log := logging.Category("auth").With("user", login.localUser, "rhost", login.remote, "service", login.service)
-	if aerr := authenticate(ctx, cfg, login, progress); aerr != nil {
+	if aerr := authenticate(ctx, cfg, &login, progress); aerr != nil {
 		log.Warn("sign-in refused", "reason", aerr.Error())
 		return aerr
 	}
@@ -105,13 +107,26 @@ func run() error {
 }
 
 type signIn struct {
-	localUser string
-	remote    string
-	service   string
+	localUser  string
+	remote     string
+	remoteUser string
+	tty        string
+	service    string
+}
+
+type signInDetail struct {
+	Type       string `json:"type"`
+	User       string `json:"user,omitempty"`
+	Host       string `json:"host,omitempty"`
+	RemoteHost string `json:"remote_host,omitempty"`
+	RemoteUser string `json:"remote_user,omitempty"`
+	TTY        string `json:"tty,omitempty"`
+	Service    string `json:"service,omitempty"`
+	At         string `json:"at"`
 }
 
 // authenticate runs one CIBA sign-in for login and answers nil only when the provider issues a verified ID token for the provider account the local account maps to.
-func authenticate(ctx context.Context, cfg *config.Config, login signIn, progress io.Writer) error {
+func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progress io.Writer) error {
 	if cfg.Provider.Issuer == "" || cfg.Provider.ClientID == "" {
 		return errors.New("provider.issuer and provider.client_id are not configured")
 	}
@@ -130,7 +145,7 @@ func authenticate(ctx context.Context, cfg *config.Config, login signIn, progres
 		return err
 	}
 
-	details, err := authorizationDetails(cfg.Approval.AuthorizationDetailsType, login)
+	details, err := authorizationDetails(cfg.Approval.AuthorizationDetailsType, login, time.Now())
 	if err != nil {
 		return err
 	}
@@ -162,17 +177,24 @@ func authenticate(ctx context.Context, cfg *config.Config, login signIn, progres
 	return nil
 }
 
-// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host, remote_host and service, or the empty string when detailType is empty.
-func authorizationDetails(detailType string, login signIn) (string, error) {
+// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host, remote_host, remote_user, tty, service and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.
+func authorizationDetails(detailType string, login *signIn, now time.Time) (string, error) {
 	if detailType == "" {
 		return "", nil
 	}
-	raw, err := json.Marshal([]map[string]string{{
-		"type":        detailType,
-		"user":        login.localUser,
-		"host":        hostName(),
-		"remote_host": remoteName(login),
-		"service":     login.service,
+	host, err := os.Hostname()
+	if err != nil {
+		host = ""
+	}
+	raw, err := json.Marshal([]signInDetail{{
+		Type:       detailType,
+		User:       login.localUser,
+		Host:       host,
+		RemoteHost: login.remote,
+		RemoteUser: login.remoteUser,
+		TTY:        login.tty,
+		Service:    login.service,
+		At:         now.UTC().Format(time.RFC3339),
 	}})
 	if err != nil {
 		return "", fmt.Errorf("encode authorization details: %w", err)
@@ -188,7 +210,7 @@ func hostName() string {
 	return host
 }
 
-func remoteName(login signIn) string {
+func remoteName(login *signIn) string {
 	if login.remote == "" {
 		return "the console"
 	}
@@ -196,7 +218,7 @@ func remoteName(login signIn) string {
 }
 
 // bindingMessage fills the template's placeholders and answers at most 255 printable characters, the binding_message a provider shows the end-user.
-func bindingMessage(template string, login signIn) string {
+func bindingMessage(template string, login *signIn) string {
 	message := strings.NewReplacer(
 		"{user}", login.localUser,
 		"{host}", hostName(),

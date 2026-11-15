@@ -71,11 +71,11 @@ Every key takes its default from the schema in `internal/config/schema/app.schem
 | `provider.request_timeout_seconds` | Bound on each HTTP request to the provider (default 10) |
 | `approval.binding_message` | Shown to the end-user beside the approval; `{user}`, `{host}`, `{rhost}` and `{service}` are replaced |
 | `approval.requested_expiry_seconds` | Request lifetime asked of the provider; 0 takes the provider's default |
-| `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host`, `remote_host` and `service` |
+| `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host`, `remote_host`, `remote_user`, `tty`, `service` and `at`, a field with no value left out |
 | `users` | Local account name to the provider account it signs in as; an account without an entry is refused |
 | `logging` | Level, file, rotation |
 
-Commands: `authenticate` (run by `pam_exec`; reads `PAM_USER`, `PAM_RHOST`, `PAM_SERVICE`), `check USER`, `--version`.
+Commands: `authenticate` (run by `pam_exec`; reads `PAM_USER`, `PAM_RHOST`, `PAM_RUSER`, `PAM_TTY`, `PAM_SERVICE`), `check USER`, `--version`.
 
 ## Building from source
 
