@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/STARTcloud/pam-ciba/compare/v0.2.0...v0.3.0) (2026-11-15)
+
+
+### Features
+
+* send every sign-in fact PAM provides in the authorization detail ([7820133](https://github.com/STARTcloud/pam-ciba/commit/7820133a68d597c6a0f54153cc467b33bbd0de75))
+
 ## [0.2.0](https://github.com/STARTcloud/pam-ciba/compare/v0.1.0...v0.2.0) (2026-11-15)
 
 
