@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/STARTcloud/pam-ciba/compare/v0.4.0...v0.5.0) (2026-11-16)
+
+
+### Features
+
+* build and publish the arm64 package ([f7c9824](https://github.com/STARTcloud/pam-ciba/commit/f7c9824a1a7ddf4104eb34af2c1c1904443bc47b))
+
 ## [0.4.0](https://github.com/STARTcloud/pam-ciba/compare/v0.3.0...v0.4.0) (2026-11-16)
 
 
