@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +36,11 @@ const usage = `usage:
   pam-ciba --version                      print the version`
 
 const maxBindingMessageLength = 255
+
+const (
+	hostLookupTimeout = 2 * time.Second
+	sshTTY            = "ssh"
+)
 
 // main stays defer-free so os.Exit cannot skip cleanup; all work and all
 // defers live in run.
@@ -145,13 +151,17 @@ func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progre
 		return err
 	}
 
-	details, err := authorizationDetails(cfg.Approval.AuthorizationDetailsType, login, time.Now())
+	details, err := authorizationDetails(ctx, cfg.Approval.AuthorizationDetailsType, login, time.Now())
 	if err != nil {
 		return err
 	}
+	message := ""
+	if details == "" {
+		message = bindingMessage(cfg.Approval.BindingMessage, login)
+	}
 	client := &ciba.Client{HTTP: httpClient, Metadata: metadata, ClientID: cfg.Provider.ClientID}
 	request, err := client.Authorize(ctx, cfg.Provider.Scope, account,
-		bindingMessage(cfg.Approval.BindingMessage, login), details, cfg.Approval.RequestedExpirySeconds)
+		message, details, cfg.Approval.RequestedExpirySeconds)
 	if err != nil {
 		return err
 	}
@@ -177,22 +187,22 @@ func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progre
 	return nil
 }
 
-// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host, remote_host, remote_user, tty, service and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.
-func authorizationDetails(detailType string, login *signIn, now time.Time) (string, error) {
+// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host (the full host name when the host has one), remote_host, remote_user, tty (left out when it is "ssh"), service and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.
+func authorizationDetails(ctx context.Context, detailType string, login *signIn, now time.Time) (string, error) {
 	if detailType == "" {
 		return "", nil
 	}
-	host, err := os.Hostname()
-	if err != nil {
-		host = ""
+	tty := login.tty
+	if tty == sshTTY {
+		tty = ""
 	}
 	raw, err := json.Marshal([]signInDetail{{
 		Type:       detailType,
 		User:       login.localUser,
-		Host:       host,
+		Host:       fullHostName(ctx),
 		RemoteHost: login.remote,
 		RemoteUser: login.remoteUser,
-		TTY:        login.tty,
+		TTY:        tty,
 		Service:    login.service,
 		At:         now.UTC().Format(time.RFC3339),
 	}})
@@ -200,6 +210,28 @@ func authorizationDetails(detailType string, login *signIn, now time.Time) (stri
 		return "", fmt.Errorf("encode authorization details: %w", err)
 	}
 	return string(raw), nil
+}
+
+// fullHostName answers this host's fully qualified name: the host name when it holds a dot, else the canonical name the resolver answers for it, else the host name as it is, and the empty string when the host has no name.
+func fullHostName(ctx context.Context) string {
+	host, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	if strings.Contains(host, ".") {
+		return host
+	}
+	lookup, cancel := context.WithTimeout(ctx, hostLookupTimeout)
+	defer cancel()
+	canonical, err := net.DefaultResolver.LookupCNAME(lookup, host)
+	if err != nil {
+		return host
+	}
+	canonical = strings.TrimSuffix(canonical, ".")
+	if strings.Contains(canonical, ".") {
+		return canonical
+	}
+	return host
 }
 
 func hostName() string {

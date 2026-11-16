@@ -19,16 +19,17 @@ type ProviderConfig struct {
 type ApprovalConfig struct {
 	// BindingMessage is shown to the end-user beside the approval; {user},
 	// {host}, {rhost} and {service} are replaced with the local account, this
-	// host's name, the remote host and the PAM service.
+	// host's name, the remote host and the PAM service. It is sent only while
+	// AuthorizationDetailsType is empty.
 	BindingMessage string `yaml:"binding_message" json:"binding_message"`
 	// RequestedExpirySeconds asks the provider for a request lifetime; 0 takes
 	// the provider's default.
 	RequestedExpirySeconds int `yaml:"requested_expiry_seconds" json:"requested_expiry_seconds"`
 	// AuthorizationDetailsType is the RFC 9396 authorization details type the
 	// provider has registered for this client; when set, the request carries
-	// one authorization detail of that type with the fields user, host,
-	// remote_host, remote_user, tty, service and at, a field with no value
-	// left out. Empty sends none.
+	// one authorization detail of that type with the fields user, host (the
+	// full host name), remote_host, remote_user, tty (left out when it is
+	// ssh), service and at, a field with no value left out. Empty sends none.
 	AuthorizationDetailsType string `yaml:"authorization_details_type" json:"authorization_details_type"`
 }
 

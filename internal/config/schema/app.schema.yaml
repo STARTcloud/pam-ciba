@@ -65,7 +65,7 @@ properties:
         maxLength: 255
         default: '{service} sign-in to {host} as {user} from {rhost}'
         title: Binding message
-        description: Shown to the end-user beside the approval; {user}, {host}, {rhost} and {service} are replaced with the local account, this host's name, the remote host and the PAM service
+        description: Shown to the end-user beside the approval; {user}, {host}, {rhost} and {service} are replaced with the local account, this host's name, the remote host and the PAM service; sent only while authorization_details_type is empty
         order: 1
       requested_expiry_seconds:
         type: integer
@@ -79,7 +79,7 @@ properties:
         type: string
         default: ''
         title: Authorization details type
-        description: The RFC 9396 authorization details type the provider has registered for this client; when set, the request carries one authorization detail of that type with the fields user, host, remote_host, remote_user, tty, service and at, a field with no value left out; empty sends none
+        description: The RFC 9396 authorization details type the provider has registered for this client; when set, the request carries one authorization detail of that type with the fields user, host (the full host name), remote_host, remote_user, tty (left out when it is ssh), service and at, a field with no value left out; empty sends none
         order: 3
   users:
     type: object

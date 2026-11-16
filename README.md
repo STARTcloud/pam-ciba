@@ -69,9 +69,9 @@ Every key takes its default from the schema in `internal/config/schema/app.schem
 | `provider.client_id` | The public client registered for CIBA poll delivery |
 | `provider.scope` | Scope of the request; contains `openid` (default `openid profile`) |
 | `provider.request_timeout_seconds` | Bound on each HTTP request to the provider (default 10) |
-| `approval.binding_message` | Shown to the end-user beside the approval; `{user}`, `{host}`, `{rhost}` and `{service}` are replaced |
+| `approval.binding_message` | Shown to the end-user beside the approval; `{user}`, `{host}`, `{rhost}` and `{service}` are replaced; sent only while `approval.authorization_details_type` is empty |
 | `approval.requested_expiry_seconds` | Request lifetime asked of the provider; 0 takes the provider's default |
-| `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host`, `remote_host`, `remote_user`, `tty`, `service` and `at`, a field with no value left out |
+| `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host` (the full host name), `remote_host`, `remote_user`, `tty` (left out when it is `ssh`), `service` and `at`, a field with no value left out |
 | `users` | Local account name to the provider account it signs in as; an account without an entry is refused |
 | `logging` | Level, file, rotation |
 

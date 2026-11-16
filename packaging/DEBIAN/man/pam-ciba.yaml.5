@@ -35,7 +35,9 @@ Shown to the end-user beside the approval, at most 255 characters.
 and
 .Li {service}
 are replaced with the local account, this host's name, the remote host and
-the PAM service.
+the PAM service. It is sent only while
+.Cm authorization_details_type
+is empty.
 .It Cm requested_expiry_seconds
 The request lifetime asked of the provider. 0 takes the provider's default.
 .It Cm authorization_details_type
@@ -43,10 +45,12 @@ The RFC 9396 authorization details type the provider has registered for
 this client. When set, the request carries one authorization detail of that
 type with the fields
 .Li user ,
-.Li host ,
+.Li host
+(the full host name),
 .Li remote_host ,
 .Li remote_user ,
-.Li tty ,
+.Li tty
+(left out when it is ssh),
 .Li service
 and
 .Li at ,
