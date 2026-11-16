@@ -3,8 +3,10 @@
  * has no pam_exec. pam_sm_authenticate runs the program named by the first
  * module option (default /opt/pam-ciba/pam-ciba) with the argument
  * "authenticate" and the environment PAM_USER, PAM_RHOST, PAM_RUSER, PAM_TTY,
- * PAM_SERVICE and PAM_TYPE, and returns PAM_SUCCESS when it exits 0,
- * PAM_AUTH_ERR otherwise.
+ * PAM_SERVICE, PAM_TYPE, SUDO_COMMAND (the caller's own, when it has one) and
+ * PAM_CIBA_SESSION_RHOST (the host the login record of PAM_TTY names, when
+ * PAM_RHOST is empty), and returns PAM_SUCCESS when it exits 0, PAM_AUTH_ERR
+ * otherwise.
  * Further module options are passed to the program before "authenticate".
  */
 
@@ -14,16 +16,20 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <utmpx.h>
 
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
 #define	PAM_CIBA_PROGRAM	"/opt/pam-ciba/pam-ciba"
 #define	PAM_CIBA_MAX_ARGS	16
+#define	PAM_CIBA_HOST_SIZE	260
+#define	PAM_CIBA_DEV_PREFIX	"/dev/"
 
 extern char **environ;
 
@@ -39,8 +45,33 @@ item(pam_handle_t *pamh, int type)
 }
 
 static void
+session_host(const char *tty, char *host, size_t size)
+{
+	struct utmpx want;
+	struct utmpx *found;
+	const char *line = tty;
+
+	host[0] = '\0';
+	if (strncmp(line, PAM_CIBA_DEV_PREFIX,
+	    sizeof (PAM_CIBA_DEV_PREFIX) - 1) == 0)
+		line += sizeof (PAM_CIBA_DEV_PREFIX) - 1;
+	if (line[0] == '\0')
+		return;
+
+	(void) memset(&want, 0, sizeof (want));
+	(void) strncpy(want.ut_line, line, sizeof (want.ut_line) - 1);
+	setutxent();
+	found = getutxline(&want);
+	if (found != NULL)
+		(void) snprintf(host, size, "%.*s",
+		    (int)sizeof (found->ut_host), found->ut_host);
+	endutxent();
+}
+
+static void
 run(const char *program, int argc, const char **argv, const char *user,
-    const char *rhost, const char *ruser, const char *tty, const char *service)
+    const char *rhost, const char *ruser, const char *tty, const char *service,
+    const char *command, const char *session_rhost)
 {
 	char *args[PAM_CIBA_MAX_ARGS + 3];
 	static char *empty[] = { NULL };
@@ -60,6 +91,8 @@ run(const char *program, int argc, const char **argv, const char *user,
 	    setenv("PAM_RUSER", ruser, 1) != 0 ||
 	    setenv("PAM_TTY", tty, 1) != 0 ||
 	    setenv("PAM_SERVICE", service, 1) != 0 ||
+	    setenv("SUDO_COMMAND", command, 1) != 0 ||
+	    setenv("PAM_CIBA_SESSION_RHOST", session_rhost, 1) != 0 ||
 	    setenv("PAM_TYPE", "auth", 1) != 0)
 		_exit(126);
 
@@ -84,6 +117,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	const char *ruser;
 	const char *tty;
 	const char *service;
+	const char *command;
+	char session_rhost[PAM_CIBA_HOST_SIZE];
 	struct sigaction dfl;
 	struct sigaction saved;
 	pid_t child;
@@ -104,6 +139,12 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	ruser = item(pamh, PAM_RUSER);
 	tty = item(pamh, PAM_TTY);
 	service = item(pamh, PAM_SERVICE);
+	command = getenv("SUDO_COMMAND");
+	if (command == NULL)
+		command = "";
+	session_rhost[0] = '\0';
+	if (rhost[0] == '\0')
+		session_host(tty, session_rhost, sizeof (session_rhost));
 
 	(void) memset(&dfl, 0, sizeof (dfl));
 	dfl.sa_handler = SIG_DFL;
@@ -118,7 +159,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 		return (PAM_SYSTEM_ERR);
 	}
 	if (child == 0)
-		run(program, argc, argv, user, rhost, ruser, tty, service);
+		run(program, argc, argv, user, rhost, ruser, tty, service,
+		    command, session_rhost);
 
 	do {
 		reaped = waitpid(child, &status, 0);

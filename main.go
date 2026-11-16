@@ -17,7 +17,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -40,6 +42,9 @@ const maxBindingMessageLength = 255
 const (
 	hostLookupTimeout = 2 * time.Second
 	sshTTY            = "ssh"
+	sudoService       = "sudo"
+	loginctlPath      = "/usr/bin/loginctl"
+	maxCommandLength  = 1024
 )
 
 // main stays defer-free so os.Exit cannot skip cleanup; all work and all
@@ -103,6 +108,13 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 
+	if login.remote == "" {
+		login.remote = sessionRemoteHost(ctx)
+	}
+	if strings.HasPrefix(login.service, sudoService) {
+		login.command = sudoCommand()
+	}
+
 	log := logging.Category("auth").With("user", login.localUser, "rhost", login.remote, "service", login.service)
 	if aerr := authenticate(ctx, cfg, &login, progress); aerr != nil {
 		log.Warn("sign-in refused", "reason", aerr.Error())
@@ -118,6 +130,7 @@ type signIn struct {
 	remoteUser string
 	tty        string
 	service    string
+	command    string
 }
 
 type signInDetail struct {
@@ -128,6 +141,7 @@ type signInDetail struct {
 	RemoteUser string `json:"remote_user,omitempty"`
 	TTY        string `json:"tty,omitempty"`
 	Service    string `json:"service,omitempty"`
+	Command    string `json:"command,omitempty"`
 	At         string `json:"at"`
 }
 
@@ -187,7 +201,7 @@ func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progre
 	return nil
 }
 
-// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host (the full host name when the host has one), remote_host, remote_user, tty (left out when it is "ssh"), service and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.
+// authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host (the full host name when the host has one), remote_host, remote_user, tty (left out when it is "ssh"), service, command and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.
 func authorizationDetails(ctx context.Context, detailType string, login *signIn, now time.Time) (string, error) {
 	if detailType == "" {
 		return "", nil
@@ -204,6 +218,7 @@ func authorizationDetails(ctx context.Context, detailType string, login *signIn,
 		RemoteUser: login.remoteUser,
 		TTY:        tty,
 		Service:    login.service,
+		Command:    login.command,
 		At:         now.UTC().Format(time.RFC3339),
 	}})
 	if err != nil {
@@ -234,6 +249,47 @@ func fullHostName(ctx context.Context) string {
 	return host
 }
 
+// sessionRemoteHost answers the remote host of the login session this process runs in: PAM_CIBA_SESSION_RHOST when the service module set it, else the RemoteHost the login manager holds for the session, and the empty string when neither names one.
+func sessionRemoteHost(ctx context.Context) string {
+	if host := strings.TrimSpace(os.Getenv("PAM_CIBA_SESSION_RHOST")); host != "" {
+		return host
+	}
+	lookup, cancel := context.WithTimeout(ctx, hostLookupTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(lookup, loginctlPath, "show-session", "self", "-p", "RemoteHost", "--value").Output()
+	if err != nil {
+		return ""
+	}
+	return printable(string(out), maxCommandLength)
+}
+
+// sudoCommand answers the command line sudo was started with: SUDO_COMMAND when the service module set it, else the command line of the parent process, and the empty string when neither can be read.
+func sudoCommand() string {
+	if command := os.Getenv("SUDO_COMMAND"); command != "" {
+		return printable(command, maxCommandLength)
+	}
+	raw, err := os.ReadFile("/proc/" + strconv.Itoa(os.Getppid()) + "/cmdline")
+	if err != nil {
+		return ""
+	}
+	return printable(strings.ReplaceAll(string(raw), "\x00", " "), maxCommandLength)
+}
+
+// printable answers text without control characters and surrounding space, cut to limit characters.
+func printable(text string, limit int) string {
+	clean := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, text)
+	runes := []rune(strings.TrimSpace(clean))
+	if len(runes) > limit {
+		runes = runes[:limit]
+	}
+	return string(runes)
+}
+
 func hostName() string {
 	host, err := os.Hostname()
 	if err != nil {
@@ -257,15 +313,5 @@ func bindingMessage(template string, login *signIn) string {
 		"{rhost}", remoteName(login),
 		"{service}", login.service,
 	).Replace(template)
-	printable := strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
-			return -1
-		}
-		return r
-	}, message)
-	runes := []rune(strings.TrimSpace(printable))
-	if len(runes) > maxBindingMessageLength {
-		runes = runes[:maxBindingMessageLength]
-	}
-	return string(runes)
+	return printable(message, maxBindingMessageLength)
 }

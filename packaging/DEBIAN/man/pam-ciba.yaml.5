@@ -47,11 +47,14 @@ type with the fields
 .Li user ,
 .Li host
 (the full host name),
-.Li remote_host ,
+.Li remote_host
+(the login session's remote host when PAM names none),
 .Li remote_user ,
 .Li tty
 (left out when it is ssh),
-.Li service
+.Li service ,
+.Li command
+(the command line of a sudo request)
 and
 .Li at ,
 a field with no value left out.
