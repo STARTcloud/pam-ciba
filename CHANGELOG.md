@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/STARTcloud/pam-ciba/compare/v0.3.0...v0.4.0) (2026-11-16)
+
+
+### Features
+
+* full host name, no binding message beside details, no ssh tty ([e38f116](https://github.com/STARTcloud/pam-ciba/commit/e38f1163baa1d0e79a882b84a1cecd83e820c1a6))
+
 ## [0.3.0](https://github.com/STARTcloud/pam-ciba/compare/v0.2.0...v0.3.0) (2026-11-15)
 
 
