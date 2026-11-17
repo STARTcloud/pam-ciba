@@ -1,3 +1,4 @@
+---
 name: Release Please
 
 on:
@@ -37,7 +38,7 @@ jobs:
         id: app
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ secrets.BOT_APP_ID }}
+          app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Release Please

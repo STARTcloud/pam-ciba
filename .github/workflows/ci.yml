@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -68,3 +69,61 @@ jobs:
     name: CodeQL
     needs: [lint, build]
     uses: ./.github/workflows/codeql.yml
+
+  lint-yaml:
+    name: Lint (YAML)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yaml .github/ .yamllint.yaml
+
+  lint-json:
+    name: Lint (JSON)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Validate JSON files parse cleanly
+        run: |
+          set -e
+          find . -name '*.json' -not -path './.git/*' -print0 | \
+            while IFS= read -r -d '' f; do
+              echo "  $f"
+              jq empty "$f"
+            done
+
+  lint-md:
+    name: Lint (Markdown)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v25
+        with:
+          globs: |
+            **/*.md
+            !CHANGELOG.md
+
+  lint-actions:
+    name: Lint (GitHub Actions)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v2
