@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/STARTcloud/pam-ciba/compare/v0.5.0...v0.5.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* the configuration file is read only and the log lives under /var/log ([0b140e8](https://github.com/STARTcloud/pam-ciba/commit/0b140e8e0a56ea89dfcc87fb1e4fd4aa38097c74))
+
 ## [0.5.0](https://github.com/STARTcloud/pam-ciba/compare/v0.4.0...v0.5.0) (2026-11-16)
 
 
