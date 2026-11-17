@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/STARTcloud/pam-ciba/compare/v0.5.1...v0.5.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* workflows pass actionlint and yamllint, with the lint jobs opnsense-oidc-login runs ([2819a86](https://github.com/STARTcloud/pam-ciba/commit/2819a86c82a223ee1e43e550df3ea860a2480f91))
+
 ## [0.5.1](https://github.com/STARTcloud/pam-ciba/compare/v0.5.0...v0.5.1) (2026-11-17)
 
 
