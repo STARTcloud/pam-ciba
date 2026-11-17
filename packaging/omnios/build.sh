@@ -69,6 +69,9 @@ install_app() {
     logcmd mkdir -p etc/pam-ciba
     logcmd cp $SRCDIR/internal/config/seed/app.config.yaml etc/pam-ciba/app.config.yaml
 
+    logmsg "Creating the log directory"
+    logcmd mkdir -p var/log/pam-ciba
+
     logmsg "Installing man pages"
     logcmd mkdir -p opt/ooce/share/man/man8 opt/ooce/share/man/man5
     logcmd cp $SRCDIR/packaging/DEBIAN/man/pam-ciba.8 opt/ooce/share/man/man8/ ||         logerr "--- copying main man page failed"

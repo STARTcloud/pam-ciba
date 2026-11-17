@@ -20,6 +20,7 @@ The workflow stages the files below, writes `DEBIAN/control` and runs `dpkg-deb 
 | `/usr/bin/pam-ciba` | The program |
 | `/usr/share/pam-ciba/config/app.config.yaml` | The first-install configuration |
 | `/etc/pam-ciba/app.config.yaml` | The configuration, written by `postinst` when absent, mode 600 |
+| `/var/log/pam-ciba/pam-ciba.log` | The log, rotated by the program |
 | `/usr/share/man/man8/pam-ciba.8.gz` | `pam-ciba(8)` |
 | `/usr/share/man/man5/pam-ciba.yaml.5.gz` | `pam-ciba.yaml(5)` |
 
@@ -29,9 +30,9 @@ The package depends on `libpam-modules` for `pam_exec` and `pam_permit`, and on 
 
 | Script | What it does |
 | --- | --- |
-| `postinst` | Creates `/etc/pam-ciba` (mode 700, root) and seeds the configuration when absent |
+| `postinst` | Creates `/etc/pam-ciba` and `/var/log/pam-ciba` (mode 700, root) and seeds the configuration when absent |
 | `prerm` | Warns when `/etc/pam.d` still names `pam-ciba` |
-| `postrm` | Removes `/etc/pam-ciba` on purge |
+| `postrm` | Removes `/etc/pam-ciba` and `/var/log/pam-ciba` on purge |
 
 ## PAM configuration
 

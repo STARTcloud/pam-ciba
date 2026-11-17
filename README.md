@@ -73,7 +73,7 @@ Every key takes its default from the schema in `internal/config/schema/app.schem
 | `approval.requested_expiry_seconds` | Request lifetime asked of the provider; 0 takes the provider's default |
 | `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host` (the full host name), `remote_host` (the login session's remote host when PAM names none), `remote_user`, `tty` (left out when it is `ssh`), `service`, `command` (the command line of a `sudo` request) and `at`, a field with no value left out |
 | `users` | Local account name to the provider account it signs in as; an account without an entry is refused |
-| `logging` | Level, file, rotation |
+| `logging` | Level, file (default `/var/log/pam-ciba/pam-ciba.log`), rotation |
 
 Commands: `authenticate` (run by `pam_exec`; reads `PAM_USER`, `PAM_RHOST`, `PAM_RUSER`, `PAM_TTY`, `PAM_SERVICE`), `check USER`, `--version`.
 

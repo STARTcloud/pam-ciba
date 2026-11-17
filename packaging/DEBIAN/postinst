@@ -5,6 +5,10 @@ mkdir -p /etc/pam-ciba
 chown root:root /etc/pam-ciba
 chmod 700 /etc/pam-ciba
 
+mkdir -p /var/log/pam-ciba
+chown root:root /var/log/pam-ciba
+chmod 700 /var/log/pam-ciba
+
 for name in app; do
     if [ ! -f "/etc/pam-ciba/${name}.config.yaml" ]; then
         cp "/usr/share/pam-ciba/config/${name}.config.yaml" "/etc/pam-ciba/${name}.config.yaml"
@@ -20,7 +24,7 @@ echo ""
 echo "1. Set the provider and users: /etc/pam-ciba/app.config.yaml"
 echo "2. Test a sign-in:             pam-ciba check USER"
 echo "3. Enable it for a service:    see pam-ciba(8), PAM CONFIGURATION"
-echo "4. View logs:                  /etc/pam-ciba/logs/pam-ciba.log"
+echo "4. View logs:                  /var/log/pam-ciba/pam-ciba.log"
 echo "======================================================================"
 echo ""
 

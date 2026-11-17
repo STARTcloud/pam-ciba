@@ -115,7 +115,7 @@ properties:
         type: string
         default: ''
         title: Log file
-        description: Empty = logs/pam-ciba.log beside the configuration file, written here on first run
+        description: Empty = /var/log/pam-ciba/pam-ciba.log
         order: 3
       max_size_mb:
         type: integer

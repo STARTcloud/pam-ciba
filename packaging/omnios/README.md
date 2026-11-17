@@ -25,6 +25,7 @@ The result is `pam-ciba-${VERSION}.p5p`.
 | `/opt/pam-ciba/pam-ciba` | The program |
 | `/usr/lib/security/amd64/pam_ciba.so.1` | The PAM service module |
 | `/etc/pam-ciba/app.config.yaml` | The configuration, preserved across upgrades |
+| `/var/log/pam-ciba/pam-ciba.log` | The log, rotated by the program |
 | `/opt/ooce/share/man` | `pam-ciba(8)`, `pam-ciba.yaml(5)` |
 
 ## PAM configuration

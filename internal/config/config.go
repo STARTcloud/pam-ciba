@@ -67,9 +67,6 @@ func Load(options Options) (*Config, error) {
 	if ferr := cfg.fill(); ferr != nil {
 		return nil, ferr
 	}
-	if werr := cfg.writeRunningValues(); werr != nil {
-		return nil, werr
-	}
 	return cfg, nil
 }
 

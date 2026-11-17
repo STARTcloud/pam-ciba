@@ -8,7 +8,7 @@ case "$1" in
     purge)
         echo "Purging PAM CIBA completely..."
 
-        rm -rf /etc/pam-ciba
+        rm -rf /etc/pam-ciba /var/log/pam-ciba
 
         echo "PAM CIBA completely removed"
         ;;

@@ -1,14 +1,12 @@
 package config
 
-import (
-	"path/filepath"
-)
+// SystemLogFile is the log file used when logging.file is empty.
+const SystemLogFile = "/var/log/pam-ciba/pam-ciba.log"
 
-// LogFilePath returns the configured log file, defaulting to
-// <config dir>/logs/pam-ciba.log.
+// LogFilePath answers logging.file, or SystemLogFile when it is empty.
 func (c *Config) LogFilePath() (string, error) {
 	if c.Logging.File != "" {
 		return c.Logging.File, nil
 	}
-	return filepath.Join(c.dir, "logs", "pam-ciba.log"), nil
+	return SystemLogFile, nil
 }
