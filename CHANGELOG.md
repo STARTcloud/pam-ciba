@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/STARTcloud/pam-ciba/compare/v0.5.2...v0.6.0) (2026-11-22)
+
+
+### Features
+
+* an account with no entry exits 2, which the OmniOS module treats as not its sign-in ([1cb906c](https://github.com/STARTcloud/pam-ciba/commit/1cb906c0875b002f5313bd68278982b6c3606493))
+
 ## [0.5.2](https://github.com/STARTcloud/pam-ciba/compare/v0.5.1...v0.5.2) (2026-11-17)
 
 
