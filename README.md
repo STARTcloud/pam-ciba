@@ -46,6 +46,8 @@ auth [success=done default=die] pam_permit.so
 
 The first line runs the sign-in and ends the stack on any failure. The second line ends the stack on success and answers the credential step, which `pam_exec` leaves unanswered.
 
+The program exits 0 when the sign-in is approved, 2 when the local account has no entry under `users`, and 1 otherwise. On illumos the service module `pam_ciba.so.1` runs the program and turns exit 2 into `PAM_IGNORE`, so an unmapped account falls through to its password; see [packaging/omnios/README.md](packaging/omnios/README.md).
+
 For OpenSSH, `sshd_config` needs:
 
 ```text

@@ -91,9 +91,10 @@ The configuration; see
 The log.
 .El
 .Sh EXIT STATUS
-.Ex -std
-A sign-in the end-user denies, leaves unanswered until the request expires,
-or that the provider refuses exits non-zero.
+.Nm
+exits 0 when the sign-in is approved, 2 when the local account has no entry
+under users, and 1 otherwise: a sign-in the end-user denies, leaves unanswered
+until the request expires, or that the provider refuses.
 .Sh SEE ALSO
 .Xr pam-ciba.yaml 5 ,
 .Xr pam_exec 8 ,

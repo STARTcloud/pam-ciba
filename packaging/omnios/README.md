@@ -30,17 +30,20 @@ The result is `pam-ciba-${VERSION}.p5p`.
 
 ## PAM configuration
 
-One entry per service in `/etc/pam.conf`, with `pam_unix_cred.so.1` above it for the credential step:
+One `binding` entry per service in `/etc/pam.conf`, above the password lines of the stock `other` stack. A mapped account whose sign-in is approved ends the stack there and is asked nothing; a mapped account whose sign-in is refused fails the stack; an account with no entry under `users` is skipped and signs in by its password:
 
 ```text
-service auth required pam_unix_cred.so.1
-service auth required pam_ciba.so.1
+sshd auth binding   pam_ciba.so.1
+sshd auth requisite pam_authtok_get.so.1
+sshd auth required  pam_dhkeys.so.1
+sshd auth required  pam_unix_cred.so.1
+sshd auth required  pam_unix_auth.so.1
 ```
 
-The module runs `/opt/pam-ciba/pam-ciba authenticate`. A first option that is an absolute path names another program; further options are passed to the program before `authenticate`:
+The module runs `/opt/pam-ciba/pam-ciba authenticate` and returns `PAM_SUCCESS` on exit 0, `PAM_IGNORE` on exit 2 (no entry under `users`) and `PAM_AUTH_ERR` otherwise. A first option that is an absolute path names another program; further options are passed to the program before `authenticate`:
 
 ```text
-service auth required pam_ciba.so.1 /opt/pam-ciba/pam-ciba --config /etc/pam-ciba
+sshd auth binding pam_ciba.so.1 /opt/pam-ciba/pam-ciba --config /etc/pam-ciba
 ```
 
 ## Test

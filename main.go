@@ -39,6 +39,8 @@ const usage = `usage:
 
 const maxBindingMessageLength = 255
 
+const exitNotMapped = 2
+
 const (
 	hostLookupTimeout = 2 * time.Second
 	sshTTY            = "ssh"
@@ -52,8 +54,20 @@ const (
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		var notMapped *notMappedError
+		if errors.As(err, &notMapped) {
+			os.Exit(exitNotMapped)
+		}
 		os.Exit(1)
 	}
+}
+
+type notMappedError struct {
+	user string
+}
+
+func (e *notMappedError) Error() string {
+	return fmt.Sprintf("local account %q has no entry under users", e.user)
 }
 
 func run() error {
@@ -152,7 +166,7 @@ func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progre
 	}
 	account, mapped := cfg.LoginHint(login.localUser)
 	if !mapped {
-		return fmt.Errorf("local account %q has no entry under users", login.localUser)
+		return &notMappedError{user: login.localUser}
 	}
 
 	httpClient := &http.Client{Timeout: time.Duration(cfg.Provider.RequestTimeoutSeconds) * time.Second}

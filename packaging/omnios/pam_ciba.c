@@ -5,7 +5,8 @@
  * "authenticate" and the environment PAM_USER, PAM_RHOST, PAM_RUSER, PAM_TTY,
  * PAM_SERVICE, PAM_TYPE, SUDO_COMMAND (the caller's own, when it has one) and
  * PAM_CIBA_SESSION_RHOST (the host the login record of PAM_TTY names, when
- * PAM_RHOST is empty), and returns PAM_SUCCESS when it exits 0, PAM_AUTH_ERR
+ * PAM_RHOST is empty), and returns PAM_SUCCESS when it exits 0, PAM_IGNORE
+ * when it exits 2 (the account has no entry under users), PAM_AUTH_ERR
  * otherwise.
  * Further module options are passed to the program before "authenticate".
  */
@@ -30,6 +31,7 @@
 #define	PAM_CIBA_MAX_ARGS	16
 #define	PAM_CIBA_HOST_SIZE	260
 #define	PAM_CIBA_DEV_PREFIX	"/dev/"
+#define	PAM_CIBA_EXIT_NOT_MAPPED	2
 
 extern char **environ;
 
@@ -167,8 +169,12 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	} while (reaped < 0 && errno == EINTR);
 	(void) sigaction(SIGCHLD, &saved, NULL);
 
-	if (reaped == child && WIFEXITED(status) && WEXITSTATUS(status) == 0)
-		return (PAM_SUCCESS);
+	if (reaped == child && WIFEXITED(status)) {
+		if (WEXITSTATUS(status) == 0)
+			return (PAM_SUCCESS);
+		if (WEXITSTATUS(status) == PAM_CIBA_EXIT_NOT_MAPPED)
+			return (PAM_IGNORE);
+	}
 
 	syslog(LOG_AUTH | LOG_NOTICE, "pam_ciba: sign-in refused for %s", user);
 	return (PAM_AUTH_ERR);
