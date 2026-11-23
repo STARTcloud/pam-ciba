@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/STARTcloud/pam-ciba/compare/v0.7.0...v0.7.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* the session's remote host falls back to the SSH connection of the process that started the sign-in ([ba7b4ca](https://github.com/STARTcloud/pam-ciba/commit/ba7b4ca5ac4b04911081703985a011530949c441))
+
 ## [0.7.0](https://github.com/STARTcloud/pam-ciba/compare/v0.6.0...v0.7.0) (2026-11-23)
 
 
