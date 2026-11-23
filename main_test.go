@@ -27,6 +27,45 @@ func TestTrustedAddress(t *testing.T) {
 	}
 }
 
+func TestSSHClientOf(t *testing.T) {
+	cases := map[string]struct {
+		environ string
+		want    string
+	}{
+		"SSH_CONNECTION wins":     {"HOME=/root\x00SSH_CLIENT=10.4.0.1 1 22\x00SSH_CONNECTION=10.12.0.140 50000 10.7.0.10 22\x00", "10.12.0.140"},
+		"SSH_CLIENT alone":        {"SSH_CLIENT=10.4.0.1 1 22\x00", "10.4.0.1"},
+		"no SSH variable":         {"HOME=/root\x00TERM=xterm\x00", ""},
+		"an empty SSH_CONNECTION": {"SSH_CONNECTION=\x00", ""},
+		"an IPv6 client":          {"SSH_CONNECTION=2001:db8::1 50000 2001:db8::2 22\x00", "2001:db8::1"},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := sshClientOf([]byte(test.environ)); got != test.want {
+				t.Fatalf("sshClientOf = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestParentPID(t *testing.T) {
+	cases := map[string]struct {
+		stat string
+		want int
+	}{
+		"a plain line":             {"49085 (sudo) S 49061 49085 49061 34816 49085 4194560 0 0", 49061},
+		"a name holding a bracket": {"42 (sh) tricky) S 7 42 42 0 -1", 7},
+		"no bracket":               {"garbage", 0},
+		"too short":                {"42 (sh) S", 0},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := parentPID(test.stat); got != test.want {
+				t.Fatalf("parentPID = %d, want %d", got, test.want)
+			}
+		})
+	}
+}
+
 func TestTrustedAddressWithNoList(t *testing.T) {
 	if trustedAddress(nil, "10.4.0.1") {
 		t.Fatal("an empty list trusts an address")

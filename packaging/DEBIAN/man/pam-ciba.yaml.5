@@ -62,7 +62,10 @@ Empty sends none.
 .It Cm trusted_addresses
 Addresses and CIDR networks a sign-in is approved from with no request,
 whether the local account is mapped or not. A sign-in from anywhere else
-is unchanged. Default none.
+is unchanged. The address compared is
+.Ev PAM_RHOST ,
+else the login session's remote host: the login manager's record, else the
+SSH connection of the process that started the sign-in. Default none.
 .El
 .Sh USERS
 A map of local account name to the provider account it signs in as, sent

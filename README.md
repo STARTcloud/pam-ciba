@@ -46,7 +46,7 @@ auth [success=done default=die] pam_permit.so
 
 The first line runs the sign-in and ends the stack on any failure. The second line ends the stack on success and answers the credential step, which `pam_exec` leaves unanswered.
 
-The same two lines in `/etc/pam.d/sudo` gate `sudo` for an account whose sudoers entry asks for authentication; an entry with `NOPASSWD` never reaches PAM. The remote host of a `sudo` request is the login session's, so `approval.trusted_addresses` lets a service account run `sudo` with no request from the listed addresses and refuses it from anywhere else when the account has no entry under `users`.
+The same two lines in `/etc/pam.d/sudo` gate `sudo` for an account whose sudoers entry asks for authentication; an entry with `NOPASSWD` never reaches PAM. The remote host of a `sudo` request is the login session's (the login manager's record, else the SSH connection of the process that started `sudo`), so `approval.trusted_addresses` lets a service account run `sudo` with no request from the listed addresses and refuses it from anywhere else when the account has no entry under `users`.
 
 The program exits 0 when the sign-in is approved, 2 when the local account has no entry under `users`, and 1 otherwise. On illumos the service module `pam_ciba.so.1` runs the program and turns exit 2 into `PAM_IGNORE`, so an unmapped account falls through to its password; see [packaging/omnios/README.md](packaging/omnios/README.md).
 

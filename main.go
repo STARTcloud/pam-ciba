@@ -30,6 +30,7 @@ import (
 	"github.com/STARTcloud/pam-ciba/internal/config"
 	"github.com/STARTcloud/pam-ciba/internal/logging"
 	"github.com/STARTcloud/pam-ciba/internal/oidc"
+	"github.com/STARTcloud/pam-ciba/internal/safepath"
 	"github.com/STARTcloud/pam-ciba/internal/version"
 )
 
@@ -48,6 +49,7 @@ const (
 	sudoService       = "sudo"
 	loginctlPath      = "/usr/bin/loginctl"
 	maxCommandLength  = 1024
+	maxAncestors      = 8
 )
 
 // main stays defer-free so os.Exit cannot skip cleanup; all work and all
@@ -290,7 +292,7 @@ func fullHostName(ctx context.Context) string {
 	return host
 }
 
-// sessionRemoteHost answers the remote host of the login session this process runs in: PAM_CIBA_SESSION_RHOST when the service module set it, else the RemoteHost the login manager holds for the session, and the empty string when neither names one.
+// sessionRemoteHost answers the remote host of the login session this process runs in: PAM_CIBA_SESSION_RHOST when the service module set it, else the RemoteHost the login manager holds for the session, else the client of the SSH connection in the environment of the process that started the sign-in, and the empty string when none names one.
 func sessionRemoteHost(ctx context.Context) string {
 	if host := strings.TrimSpace(os.Getenv("PAM_CIBA_SESSION_RHOST")); host != "" {
 		return host
@@ -298,10 +300,62 @@ func sessionRemoteHost(ctx context.Context) string {
 	lookup, cancel := context.WithTimeout(ctx, hostLookupTimeout)
 	defer cancel()
 	out, err := exec.CommandContext(lookup, loginctlPath, "show-session", "self", "-p", "RemoteHost", "--value").Output()
-	if err != nil {
-		return ""
+	if host := printable(string(out), maxCommandLength); err == nil && host != "" {
+		return host
 	}
-	return printable(string(out), maxCommandLength)
+	return sshClientOfAncestors(os.Getppid())
+}
+
+// sshClientOfAncestors walks from pid up through at most maxAncestors parents and answers the client address of the first SSH connection found in a parent's environment (SSH_CONNECTION, else SSH_CLIENT), or the empty string.
+func sshClientOfAncestors(pid int) string {
+	for depth := 0; depth < maxAncestors && pid > 1; depth++ {
+		if environ, err := safepath.ReadFile("/proc/" + strconv.Itoa(pid) + "/environ"); err == nil {
+			if client := sshClientOf(environ); client != "" {
+				return client
+			}
+		}
+		stat, err := safepath.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+		if err != nil {
+			return ""
+		}
+		pid = parentPID(string(stat))
+	}
+	return ""
+}
+
+// sshClientOf answers the client address named by SSH_CONNECTION, else by SSH_CLIENT, in a NUL-separated environment, or the empty string.
+func sshClientOf(environ []byte) string {
+	client := ""
+	for _, entry := range strings.Split(string(environ), "\x00") {
+		if value, ok := strings.CutPrefix(entry, "SSH_CONNECTION="); ok {
+			if fields := strings.Fields(value); len(fields) > 0 {
+				return printable(fields[0], maxCommandLength)
+			}
+		}
+		if value, ok := strings.CutPrefix(entry, "SSH_CLIENT="); ok && client == "" {
+			if fields := strings.Fields(value); len(fields) > 0 {
+				client = printable(fields[0], maxCommandLength)
+			}
+		}
+	}
+	return client
+}
+
+// parentPID answers the parent process id held in a Linux /proc/<pid>/stat line, or 0 when the line does not hold one.
+func parentPID(stat string) int {
+	end := strings.LastIndex(stat, ")")
+	if end < 0 {
+		return 0
+	}
+	fields := strings.Fields(stat[end+1:])
+	if len(fields) < 2 {
+		return 0
+	}
+	parent, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0
+	}
+	return parent
 }
 
 // sudoCommand answers the command line sudo was started with: SUDO_COMMAND when the service module set it, else the command line of the parent process, and the empty string when neither can be read.

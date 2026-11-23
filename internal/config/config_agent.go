@@ -29,13 +29,15 @@ type ApprovalConfig struct {
 	// provider has registered for this client; when set, the request carries
 	// one authorization detail of that type with the fields user, host (the
 	// full host name), remote_host (the login session's remote host when PAM
-	// names none), remote_user, tty (left out when it is ssh), service,
+	// names none: the login manager's record, else the SSH connection of the
+	// process that started the sign-in), remote_user, tty (left out when it is ssh), service,
 	// command (the command line of a sudo request) and at, a field with no
 	// value left out. Empty sends none.
 	AuthorizationDetailsType string `yaml:"authorization_details_type" json:"authorization_details_type"`
 	// TrustedAddresses lists the addresses and networks (CIDR) a sign-in is
 	// approved from with no request, whether the local account is mapped or
-	// not; a sign-in from anywhere else is unchanged.
+	// not; a sign-in from anywhere else is unchanged. The address compared is
+	// PAM_RHOST, else the login session's remote host.
 	TrustedAddresses []string `yaml:"trusted_addresses" json:"trusted_addresses"`
 }
 

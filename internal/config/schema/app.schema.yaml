@@ -87,7 +87,7 @@ properties:
           type: string
         default: []
         title: Trusted addresses
-        description: Addresses and networks (CIDR) a sign-in is approved from with no request, whether the local account is mapped or not; a sign-in from anywhere else is unchanged
+        description: Addresses and networks (CIDR) a sign-in is approved from with no request, whether the local account is mapped or not; a sign-in from anywhere else is unchanged; the address compared is PAM_RHOST, else the login session's remote host (the login manager's record, else the SSH connection of the process that started the sign-in)
         order: 4
   users:
     type: object
