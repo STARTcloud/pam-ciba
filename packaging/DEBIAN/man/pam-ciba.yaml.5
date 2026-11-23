@@ -59,6 +59,10 @@ and
 .Li at ,
 a field with no value left out.
 Empty sends none.
+.It Cm trusted_addresses
+Addresses and CIDR networks a sign-in is approved from with no request,
+whether the local account is mapped or not. A sign-in from anywhere else
+is unchanged. Default none.
 .El
 .Sh USERS
 A map of local account name to the provider account it signs in as, sent

@@ -22,7 +22,10 @@ Client-Initiated Backchannel Authentication flow in poll mode. It is run by
 in a PAM auth stack. It asks the provider to have the end-user the local
 account maps to approve the sign-in on their own device, waits for the
 answer, and exits 0 once the provider issues an ID token that verifies and
-names that end-user. It asks the terminal nothing.
+names that end-user. It asks the terminal nothing. A sign-in from an
+address listed under
+.Cm approval.trusted_addresses
+is approved with no request.
 .Sh OPTIONS
 .Bl -tag -width ".Fl -config Ar dir"
 .It Fl -config Ar dir
@@ -92,8 +95,8 @@ The log.
 .El
 .Sh EXIT STATUS
 .Nm
-exits 0 when the sign-in is approved, 2 when the local account has no entry
-under users, and 1 otherwise: a sign-in the end-user denies, leaves unanswered
+exits 0 when the sign-in is approved or comes from a trusted address, 2 when
+the local account has no entry under users, and 1 otherwise: a sign-in the end-user denies, leaves unanswered
 until the request expires, or that the provider refuses.
 .Sh SEE ALSO
 .Xr pam-ciba.yaml 5 ,

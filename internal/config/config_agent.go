@@ -33,6 +33,10 @@ type ApprovalConfig struct {
 	// command (the command line of a sudo request) and at, a field with no
 	// value left out. Empty sends none.
 	AuthorizationDetailsType string `yaml:"authorization_details_type" json:"authorization_details_type"`
+	// TrustedAddresses lists the addresses and networks (CIDR) a sign-in is
+	// approved from with no request, whether the local account is mapped or
+	// not; a sign-in from anywhere else is unchanged.
+	TrustedAddresses []string `yaml:"trusted_addresses" json:"trusted_addresses"`
 }
 
 // LoggingConfig controls slog output.

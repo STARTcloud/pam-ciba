@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -159,10 +160,15 @@ type signInDetail struct {
 	At         string `json:"at"`
 }
 
-// authenticate runs one CIBA sign-in for login and answers nil only when the provider issues a verified ID token for the provider account the local account maps to.
+// authenticate answers nil for a sign-in from a trusted address, and otherwise runs one CIBA sign-in for login and answers nil only when the provider issues a verified ID token for the provider account the local account maps to.
 func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progress io.Writer) error {
 	if cfg.Provider.Issuer == "" || cfg.Provider.ClientID == "" {
 		return errors.New("provider.issuer and provider.client_id are not configured")
+	}
+	if trustedAddress(cfg.Approval.TrustedAddresses, login.remote) {
+		slog.Info("trusted address, no request sent", "category", "auth", "user", login.localUser, "rhost", login.remote)
+		fmt.Fprintf(progress, "approved: %s is a trusted address\n", login.remote)
+		return nil
 	}
 	account, mapped := cfg.LoginHint(login.localUser)
 	if !mapped {
@@ -213,6 +219,27 @@ func authenticate(ctx context.Context, cfg *config.Config, login *signIn, progre
 	}
 	fmt.Fprintf(progress, "approved by %s\n", claims.Subject)
 	return nil
+}
+
+// trustedAddress reports whether remote is an IP address inside one of the trusted addresses or networks; a name or an empty remote is never trusted.
+func trustedAddress(trusted []string, remote string) bool {
+	address, err := netip.ParseAddr(remote)
+	if err != nil {
+		return false
+	}
+	address = address.Unmap()
+	for _, entry := range trusted {
+		if prefix, perr := netip.ParsePrefix(entry); perr == nil {
+			if prefix.Masked().Contains(address) {
+				return true
+			}
+			continue
+		}
+		if single, aerr := netip.ParseAddr(entry); aerr == nil && single.Unmap() == address {
+			return true
+		}
+	}
+	return false
 }
 
 // authorizationDetails answers the RFC 9396 authorization_details array for login: one detail of detailType with the fields user, host (the full host name when the host has one), remote_host, remote_user, tty (left out when it is "ssh"), service, command and at, the RFC 3339 UTC time of now, a field with no value left out, or the empty string when detailType is empty.

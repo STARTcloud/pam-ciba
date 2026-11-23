@@ -46,6 +46,8 @@ auth [success=done default=die] pam_permit.so
 
 The first line runs the sign-in and ends the stack on any failure. The second line ends the stack on success and answers the credential step, which `pam_exec` leaves unanswered.
 
+The same two lines in `/etc/pam.d/sudo` gate `sudo` for an account whose sudoers entry asks for authentication; an entry with `NOPASSWD` never reaches PAM. The remote host of a `sudo` request is the login session's, so `approval.trusted_addresses` lets a service account run `sudo` with no request from the listed addresses and refuses it from anywhere else when the account has no entry under `users`.
+
 The program exits 0 when the sign-in is approved, 2 when the local account has no entry under `users`, and 1 otherwise. On illumos the service module `pam_ciba.so.1` runs the program and turns exit 2 into `PAM_IGNORE`, so an unmapped account falls through to its password; see [packaging/omnios/README.md](packaging/omnios/README.md).
 
 For OpenSSH, `sshd_config` needs:
@@ -74,6 +76,7 @@ Every key takes its default from the schema in `internal/config/schema/app.schem
 | `approval.binding_message` | Shown to the end-user beside the approval; `{user}`, `{host}`, `{rhost}` and `{service}` are replaced; sent only while `approval.authorization_details_type` is empty |
 | `approval.requested_expiry_seconds` | Request lifetime asked of the provider; 0 takes the provider's default |
 | `approval.authorization_details_type` | The RFC 9396 authorization details type registered at the provider for this client; when set, the request carries one detail of that type with the fields `user`, `host` (the full host name), `remote_host` (the login session's remote host when PAM names none), `remote_user`, `tty` (left out when it is `ssh`), `service`, `command` (the command line of a `sudo` request) and `at`, a field with no value left out |
+| `approval.trusted_addresses` | Addresses and CIDR networks a sign-in is approved from with no request, whether the local account is mapped or not; a sign-in from anywhere else is unchanged (default none) |
 | `users` | Local account name to the provider account it signs in as; an account without an entry is refused |
 | `logging` | Level, file (default `/var/log/pam-ciba/pam-ciba.log`), rotation |
 
